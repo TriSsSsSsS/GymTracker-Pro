@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>Generatore Schede Allenamento AI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+    .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    .header p { opacity: 0.9; }
+    .content { padding: 2rem; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .form-group { display: flex; flex-direction: column; }
+    label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #333;
+      font-size: 0.9rem;
+    }
+    input, select, textarea {
+      padding: 0.75rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+      display: none;
+    }
+    #result.show { display: block; animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      display: none;
+    }
+    .loading.show { display: block; }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .progress-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 1rem auto;
+      background: #f3f3f3;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 8px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .optional-label::after {
+      content: ' (Opzionale)';
+      color: #999;
+      font-weight: 400;
+      font-size: 0.85rem;
+    }
+    .warning-label {
+      color: #f59e0b !important;
+      font-size: 1rem !important;
+    }
+    .warning-label::before {
+      content: '⚠️ ';
+    }
+    #customWorkoutType {
+      display: none;
+      margin-top: 0.5rem;
+    }
+    .workout-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      border: 2px solid #e0e0e0;
+    }
+    .workout-card h3 {
+      color: #667eea;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+    .exercise-item {
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+    .exercise-item h4 {
+      color: #333;
+      margin-bottom: 0.5rem;
+    }
+    .exercise-details {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+    .error {
+      background: #fee;
+      border-left-color: #f44;
+      color: #c33;
+    }
+    .copy-btn {
+      background: #34d399;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+    .copy-btn:hover { background: #10b981; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💪 Generatore Schede Allenamento AI</h1>
+      <p>Crea la tua scheda personalizzata con l'intelligenza artificiale</p>
+    </div>
+    
+    <div class="content">
+      <form id="workoutForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="optional-label">👤 Nome</label>
+            <input type="text" name="name" placeholder="Mario Rossi">
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">🎂 Età</label>
+            <input type="number" name="age" placeholder="25">
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">📏 Altezza (cm)</label>
+            <input type="number" name="height" placeholder="175">
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">⚖️ Peso (kg)</label>
+            <input type="number" name="weight" placeholder="70">
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">📊 Livello Esperienza</label>
+            <select name="level">
+              <option value="Principiante">Principiante</option>
+              <option value="Intermedio">Intermedio</option>
+              <option value="Avanzato">Avanzato</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">📅 Sessioni Settimanali</label>
+            <input type="number" name="sessionsPerWeek" placeholder="Auto" min="1" max="7" id="sessionsInput">
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">⏱️ Tempo per Sessione (min)</label>
+            <input type="number" name="time" value="60" min="30" max="180">
+          </div>
+          
+          <div class="form-group">
+            <label class="optional-label">🔢 Esercizi per Sessione</label>
+            <input type="number" name="numExercises" value="6" min="3" max="12">
+          </div>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="optional-label">🎯 Tipo di Allenamento</label>
+          <select name="workoutType" id="workoutTypeSelect">
+            <option value="">Seleziona tipo...</option>
+            <option value="Senza pesi">Senza pesi</option>
+            <option value="Full Body">Full Body</option>
+            <option value="Push/Pull/Legs">Spinta/Tirata/Gambe</option>
+            <option value="Upper/Lower Split">Parte Superiore/Inferiore</option>
+            <option value="Petto-Bicipiti / Dorso-Tricipiti / Gambe-Spalle">Petto-Bicipiti / Dorso-Tricipiti / Gambe-Spalle</option>
+            <option value="Personalizzato">Personalizzato</option>
+          </select>
+          <input type="text" id="customWorkoutType" name="customWorkoutType" placeholder="Descrivi il tuo allenamento personalizzato...">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="optional-label">🎯 Obiettivi</label>
+          <textarea name="goals" placeholder="Es: Aumentare massa muscolare, perdere peso, migliorare forza..."></textarea>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="optional-label">❤️ Esercizi Preferiti</label>
+          <textarea name="preferredExercises" placeholder="Es: Panca piana, squat, stacchi..."></textarea>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="optional-label">🚫 Esercizi da Escludere</label>
+          <textarea name="excludedExercises" placeholder="Es: Stacchi da terra, overhead press..."></textarea>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="warning-label">Dolori o Limitazioni</label>
+          <textarea name="issues" placeholder="Es: Dolore lombare, problemi al ginocchio..." style="border-color: #f59e0b;"></textarea>
+        </div>
+        
+        <button type="submit" class="btn">🚀 Genera Scheda</button>
+      </form>
+      
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Sto creando la tua scheda personalizzata...</p>
+        <div class="progress-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p id="progressText" style="color: #667eea; margin-top: 0.5rem; font-size: 0.9rem;">Tempo stimato: 15-25 secondi</p>
+      </div>
+      
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const form = document.getElementById('workoutForm');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+    const workoutTypeSelect = document.getElementById('workoutTypeSelect');
+    const customWorkoutType = document.getElementById('customWorkoutType');
+    const sessionsInput = document.getElementById('sessionsInput');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+
+    // Mostra/nascondi campo personalizzato
+    workoutTypeSelect.addEventListener('change', function() {
+      if (this.value === 'Personalizzato') {
+        customWorkoutType.style.display = 'block';
+      } else {
+        customWorkoutType.style.display = 'none';
+        customWorkoutType.value = '';
+      }
+      
+      // Auto-seleziona sessioni in base al tipo di allenamento
+      if (!sessionsInput.value || sessionsInput.value === '') {
+        autoSelectSessions();
+      }
+    });
+
+    function autoSelectSessions() {
+      const workoutType = workoutTypeSelect.value;
+      let suggestedSessions = 3;
+      
+      switch(workoutType) {
+        case 'Senza pesi':
+        case 'Full Body':
+          suggestedSessions = 3;
+          break;
+        case 'Push/Pull/Legs':
+        case 'Petto-Bicipiti / Dorso-Tricipiti / Gambe-Spalle':
+          suggestedSessions = 3;
+          break;
+        case 'Upper/Lower Split':
+          suggestedSessions = 4;
+          break;
+        default:
+          suggestedSessions = 3;
+      }
+      
+      if (!sessionsInput.value) {
+        sessionsInput.placeholder = `Suggerito: ${suggestedSessions}`;
+      }
+    }
+
+    function simulateProgress() {
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+      }, 1000);
+      return interval;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData);
+      
+      // Se tipo personalizzato, usa il testo custom
+      let workoutType = data.workoutType;
+      if (workoutType === 'Personalizzato' && data.customWorkoutType) {
+        workoutType = data.customWorkoutType;
+      }
+      
+      // Auto-seleziona sessioni se non specificate
+      let sessions = data.sessionsPerWeek;
+      if (!sessions || sessions === '') {
+        switch(workoutType) {
+          case 'Senza pesi':
+          case 'Full Body':
+            sessions = 3;
+            break;
+          case 'Push/Pull/Legs':
+          case 'Petto-Bicipiti / Dorso-Tricipiti / Gambe-Spalle':
+            sessions = 3;
+            break;
+          case 'Upper/Lower Split':
+            sessions = 4;
+            break;
+          default:
+            sessions = 3;
+        }
+      }
+      
+      const prompt = `[INST]
+Crea una scheda di allenamento personalizzata in formato JSON valido per l'utente seguente.
+Dati utente:
+- Nome: ${data.name || 'Utente anonimo'}
+- Età: ${data.age || 'Non specificata'}
+- Altezza: ${data.height || 'Non specificata'} cm
+- Peso: ${data.weight || 'Non specificato'} kg
+- Livello esperienza: ${data.level || 'Principiante'}
+- Sessioni settimanali: ${sessions}
+- Tempo per sessione: ${data.time || 60} minuti
+- Numero esercizi per sessione: ${data.numExercises || 6}
+- Obiettivi: ${data.goals || 'Generico'}
+- Esercizi preferiti: ${data.preferredExercises || 'Nessuno'}
+- Tipo di allenamento: ${workoutType || 'Non specificato'}
+- Esercizi da escludere: ${data.excludedExercises || 'Nessuno'}
+- Dolori o limitazioni: ${data.issues || 'Nessuno'}
+
+Genera una scheda unica e personalizzata basata SOLO su questi dati. Adatta esercizi, serie, reps e note ai dati (es. per principianti usa esercizi semplici, per obiettivi di massa aumenta volume).
+Struttura JSON ESATTA:
+{
+  "title": "Titolo personalizzato per l'utente",
+  "duration_weeks": 8,
+  "sessions_per_week": numero da input,
+  "workout_days": [
+    {
+      "day": "Nome sessione (es. Lunedì o Sessione 1)",
+      "focus": "Gruppo muscolare (es. Full Body, Upper Body)",
+      "exercises": [
+        {
+          "name": "Nome esercizio",
+          "sets": numero serie,
+          "reps": "Range reps (es. 10-12)",
+          "notes": "(Opzionali) Note personalizzate basate su input"
+        }
+      ]
+    }
+  ],
+  "notes": "Note generali personalizzate"
+}
+
+Rispondi SOLO con JSON valido, senza testo extra, introduzioni o spiegazioni.
+[/INST]`;
+
+      loading.classList.add('show');
+      result.classList.remove('show', 'error');
+      result.innerHTML = '';
+      
+      // Avvia la barra di progresso
+      progressBar.style.width = '0%';
+      const progressInterval = simulateProgress();
+      const startTime = Date.now();
+      
+      try {
+        // Ottieni la chiave API (sarà iniettata da Netlify in produzione)
+        const apiKey = window.getGeminiKey ? window.getGeminiKey() : window.GEMINI_KEY;
+        
+        if (!apiKey || apiKey === "PLACEHOLDER_FOR_NETLIFY") {
+          throw new Error('API Key non configurata. Contatta l\'amministratore del sito.');
+        }
+        
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: prompt }]
+              }],
+              generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 8192,
+              }
+            })
+          }
+        );
+        
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        const elapsedTime = Math.round((Date.now() - startTime) / 1000);
+        progressText.textContent = `Completato in ${elapsedTime} secondi!`;
+        
+        setTimeout(() => {
+          loading.classList.remove('show');
+        }, 500);
+        
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(responseData?.error?.message || `Errore HTTP ${response.status}`);
+        }
+        
+        let textResponse = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        // Pulisci la risposta da markdown e testo extra
+        textResponse = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Trova il JSON nella risposta
+        const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('Nessun JSON valido trovato nella risposta');
+        }
+        
+        const workoutData = JSON.parse(jsonMatch[0]);
+        displayWorkout(workoutData);
+        
+      } catch (error) {
+        clearInterval(progressInterval);
+        loading.classList.remove('show');
+        result.classList.add('show', 'error');
+        result.innerHTML = `<h3>❌ Errore</h3><p>${error.message}</p>`;
+      }
+    });
+
+    function displayWorkout(workout) {
+      let html = `
+        <h2 style="color: #667eea; margin-bottom: 1rem;">${workout.title}</h2>
+        <p style="margin-bottom: 0.5rem;"><strong>Durata:</strong> ${workout.duration_weeks} settimane</p>
+        <p style="margin-bottom: 1.5rem;"><strong>Sessioni settimanali:</strong> ${workout.sessions_per_week}</p>
+      `;
+      
+      workout.workout_days.forEach((day, index) => {
+        html += `
+          <div class="workout-card">
+            <h3>${day.day}</h3>
+            <p style="color: #666; margin-bottom: 1rem;"><strong>Focus:</strong> ${day.focus}</p>
+        `;
+        
+        day.exercises.forEach(ex => {
+          html += `
+            <div class="exercise-item">
+              <h4>💪 ${ex.name}</h4>
+              <div class="exercise-details"><strong>Serie:</strong> ${ex.sets} × <strong>Reps:</strong> ${ex.reps}</div>
+              ${ex.notes ? `<div class="exercise-details" style="color: #8b5cf6; margin-top: 0.5rem;">📝 ${ex.notes}</div>` : ''}
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+      });
+      
+      if (workout.notes) {
+        html += `
+          <div style="background: #fffbeb; padding: 1rem; border-radius: 8px; border-left: 4px solid #fbbf24;">
+            <h4 style="color: #92400e; margin-bottom: 0.5rem;">📋 Note Generali</h4>
+            <p style="color: #78350f;">${workout.notes}</p>
+          </div>
+        `;
+      }
+      
+      html += `<button class="copy-btn" onclick="copyJSON()">📋 Copia JSON</button>`;
+      
+      result.innerHTML = html;
+      result.classList.add('show');
+      
+      // Salva JSON per copiare
+      window.currentWorkout = workout;
+    }
+
+    function copyJSON() {
+      navigator.clipboard.writeText(JSON.stringify(window.currentWorkout, null, 2))
+        .then(() => alert('✅ JSON copiato negli appunti!'))
+        .catch(() => alert('❌ Errore nella copia'));
+    }
+
+    // Verifica API Key
+    if (typeof window.GEMINI_KEY === 'undefined') {
+      result.classList.add('show', 'error');
+      result.innerHTML = '<h3>⚠️ Errore: API Key non trovata!</h3><p>Assicurati che il file config.js contenga: window.GEMINI_KEY = "la_tua_api_key_qui";</p>';
+      form.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
